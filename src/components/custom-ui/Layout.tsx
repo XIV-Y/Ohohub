@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { ThemeProvider } from '@/providers/theme'
 
 import Header from '@/components/custom-ui/header'
+import Footer from '@/components/custom-ui/Footer'
 
 const Layout = () => {
   return (
@@ -14,6 +15,7 @@ const Layout = () => {
             <Outlet />
           </div>
         </main>
+        <Footer />
       </div>
     </ThemeProvider>
   )
