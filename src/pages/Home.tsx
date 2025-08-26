@@ -1,12 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card'
 import useAudioPlayer from '@/hooks/useAudioPlayer'
-import { Play, Pause, Volume2, VolumeX, Plus } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-
-import Header from '@/components/custom-ui/header'
-import { ThemeProvider } from '@/providers/theme'
-import { Link } from 'react-router-dom'
 
 export default function Home() {
   const audioSrc = '/test.mp3'
