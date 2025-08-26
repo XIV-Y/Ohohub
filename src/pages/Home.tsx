@@ -1,12 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card'
 import useAudioPlayer from '@/hooks/useAudioPlayer'
-import { Play, Pause, Volume2, VolumeX, Plus } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-
-import Header from '@/components/custom-ui/header'
-import { ThemeProvider } from '@/providers/theme'
-import { Link } from 'react-router-dom'
 
 export default function Home() {
   const audioSrc = '/test.mp3'
@@ -105,29 +101,5 @@ export default function Home() {
         </div>
       </CardContent>
     </Card>
-
-    // <nav className="fixed bottom-0 w-full border-t border-gray-200 bg-white">
-    //   <div className="mx-auto flex w-full max-w-sm">
-    //     <button className="flex-1 px-2 py-3 text-center hover:bg-gray-50">
-    //       <div className="mx-auto mb-1 h-6 w-6 rounded bg-gray-400"></div>
-    //       <span className="text-xs text-gray-600">ホーム</span>
-    //     </button>
-
-    //     <div className="relative -top-8 flex flex-col items-center">
-    //       <Link
-    //         to="/audio/create"
-    //         className="bg-primary-gradient block rounded-full p-4 shadow-lg transition-colors duration-200"
-    //       >
-    //         <Plus className="h-8 w-8 text-white" strokeWidth={2} />
-    //       </Link>
-    //       <span className="mt-1 text-sm text-gray-600">投稿</span>
-    //     </div>
-
-    //     <button className="flex-1 px-2 py-3 text-center hover:bg-gray-50">
-    //       <div className="mx-auto mb-1 h-6 w-6 rounded bg-gray-400"></div>
-    //       <span className="text-xs text-gray-600">検索</span>
-    //     </button>
-    //   </div>
-    // </nav>
   )
 }
