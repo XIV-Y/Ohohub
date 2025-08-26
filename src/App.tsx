@@ -1,8 +1,11 @@
 import { Card, CardContent } from './components/ui/card'
 import useAudioPlayer from './hooks/useAudioPlayer'
-import { Play, Pause, Square, Volume2, VolumeX } from 'lucide-react'
+import { Play, Pause, Square, Volume2, VolumeX, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
+
+import Header from '@/components/custom-ui/header'
+import { ThemeProvider } from '@/providers/theme'
 
 export default function MobileFirstApp() {
   const audioSrc = '/test.mp3'
@@ -31,117 +34,116 @@ export default function MobileFirstApp() {
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0
 
   return (
-    <div className="min-h-screen w-full bg-gray-100">
-      {/* ヘッダー */}
-      <header className="sticky top-0 z-50 flex w-full items-center justify-center bg-blue-600 p-4 text-white">
-        <div className="flex w-full items-center justify-between">
-          <h1 className="text-lg font-bold">MyApp</h1>
-        </div>
-      </header>
+    <ThemeProvider>
+      <div className="bg-primary-origin min-h-screen w-full">
+        <Header />
 
-      <main className="mx-auto w-full max-w-lg bg-white p-4 pt-10 pb-30">
-        <div className="mx-auto min-h-screen w-full">
-          <Card className="w-full">
-            <CardContent className="p-6">
-              <div className="space-y-6">
-                <audio ref={audioRef} src={audioSrc} />
-
+        <main className="bg-card mx-auto w-full max-w-lg p-4 pt-10 pb-30">
+          <div className="mx-auto min-h-screen w-full">
+            <Card className="w-full">
+              <CardContent className="p-6">
                 <div className="space-y-6">
-                  {/* トラック情報 */}
-                  <div className="space-y-2 text-center">
-                    <h3 className="text-lg font-semibold">サンプル音声</h3>
-                    <p className="text-muted-foreground text-sm">
-                      アーティスト名
-                    </p>
-                  </div>
+                  <audio ref={audioRef} src={audioSrc} />
 
-                  {/* 再生時間表示 */}
-                  <div className="text-muted-foreground flex justify-between text-sm">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
-                  </div>
-
-                  {/* シークバー */}
-                  <Slider
-                    value={[progressPercentage]}
-                    onValueChange={(value) => seek(value[0])}
-                    max={100}
-                    step={0.1}
-                    className="w-full"
-                  />
-
-                  {/* コントロールボタン */}
-                  <div className="flex items-center justify-center space-x-4">
-                    <Button
-                      onClick={togglePlayPause}
-                      size="icon"
-                      className="h-14 w-14"
-                    >
-                      {isPlaying ? (
-                        <Pause className="h-6 w-6" />
-                      ) : (
-                        <Play className="ml-1 h-6 w-6" />
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* 音量調整 */}
-                  <div className="flex items-center space-x-3">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={toggleMute}
-                      className="h-8 w-8"
-                    >
-                      {isMuted || volume === 0 ? (
-                        <VolumeX className="h-4 w-4" />
-                      ) : (
-                        <Volume2 className="h-4 w-4" />
-                      )}
-                    </Button>
-
-                    <div className="flex-1">
-                      <Slider
-                        value={[isMuted ? 0 : volume]}
-                        onValueChange={(value) => changeVolume(value[0])}
-                        max={100}
-                        step={1}
-                        className="w-full"
-                      />
+                  <div className="space-y-6">
+                    {/* トラック情報 */}
+                    <div className="space-y-2 text-center">
+                      <h3 className="text-lg font-semibold">サンプル音声</h3>
+                      <p className="text-muted-foreground text-sm">
+                        アーティスト名
+                      </p>
                     </div>
 
-                    <span className="text-muted-foreground min-w-[3ch] text-sm">
-                      {isMuted ? 0 : volume}
-                    </span>
+                    {/* 再生時間表示 */}
+                    <div className="text-muted-foreground flex justify-between text-sm">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+
+                    {/* シークバー */}
+                    <Slider
+                      value={[progressPercentage]}
+                      onValueChange={(value) => seek(value[0])}
+                      max={100}
+                      step={0.1}
+                      className="w-full"
+                    />
+
+                    {/* コントロールボタン */}
+                    <div className="flex items-center justify-center space-x-4">
+                      <Button
+                        onClick={togglePlayPause}
+                        size="icon"
+                        className="h-14 w-14"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-6 w-6" />
+                        ) : (
+                          <Play className="ml-1 h-6 w-6" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* 音量調整 */}
+                    <div className="flex items-center space-x-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleMute}
+                        className="h-8 w-8"
+                      >
+                        {isMuted || volume === 0 ? (
+                          <VolumeX className="h-4 w-4" />
+                        ) : (
+                          <Volume2 className="h-4 w-4" />
+                        )}
+                      </Button>
+
+                      <div className="flex-1">
+                        <Slider
+                          value={[isMuted ? 0 : volume]}
+                          onValueChange={(value) => changeVolume(value[0])}
+                          max={100}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <span className="text-muted-foreground min-w-[3ch] text-sm">
+                        {isMuted ? 0 : volume}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
 
-      {/* ボトムナビゲーション */}
-      <nav className="fixed bottom-0 w-full border-t border-gray-200 bg-white">
-        <div className="mx-auto flex w-full max-w-sm">
-          <button className="flex-1 px-2 py-3 text-center hover:bg-gray-50">
-            <div className="mx-auto mb-1 h-6 w-6 rounded bg-gray-400"></div>
-            <span className="text-xs text-gray-600">ホーム</span>
-          </button>
-          <button className="flex-1 px-2 py-3 text-center hover:bg-gray-50">
-            <div className="mx-auto mb-1 h-6 w-6 rounded bg-gray-400"></div>
-            <span className="text-xs text-gray-600">検索</span>
-          </button>
-          <button className="flex-1 px-2 py-3 text-center hover:bg-gray-50">
-            <div className="mx-auto mb-1 h-6 w-6 rounded bg-gray-400"></div>
-            <span className="text-xs text-gray-600">お気に入り</span>
-          </button>
-          <button className="flex-1 px-2 py-3 text-center hover:bg-gray-50">
-            <div className="mx-auto mb-1 h-6 w-6 rounded bg-gray-400"></div>
-            <span className="text-xs text-gray-600">プロフィール</span>
-          </button>
-        </div>
-      </nav>
-    </div>
+        {/* ボトムナビゲーション */}
+        <nav className="fixed bottom-0 w-full border-t border-gray-200 bg-white">
+          <div className="mx-auto flex w-full max-w-sm">
+            <button className="flex-1 px-2 py-3 text-center hover:bg-gray-50">
+              <div className="mx-auto mb-1 h-6 w-6 rounded bg-gray-400"></div>
+              <span className="text-xs text-gray-600">ホーム</span>
+            </button>
+
+            <div className="relative -top-8 flex flex-col items-center">
+              <button>
+                <div className="bg-primary-gradient rounded-full p-4 shadow-lg transition-colors duration-200">
+                  <Plus className="h-8 w-8 text-white" strokeWidth={2} />
+                </div>
+              </button>
+              <span className="mt-1 text-sm text-gray-600">投稿</span>
+            </div>
+
+            <button className="flex-1 px-2 py-3 text-center hover:bg-gray-50">
+              <div className="mx-auto mb-1 h-6 w-6 rounded bg-gray-400"></div>
+              <span className="text-xs text-gray-600">検索</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    </ThemeProvider>
   )
 }
