@@ -48,6 +48,9 @@ const AudioCreate = () => {
   const audioRef = useRef(null)
 
   const selectedFile = watch('audioFile')
+  const postTitleValue = watch('postTitle')
+  const xIdValue = watch('xId')
+  const deletePasswordValue = watch('deletePassword')
 
   // バリデーションルール
   const validationRules = {
@@ -255,7 +258,7 @@ const AudioCreate = () => {
                   <Label htmlFor="audioFile" className="cursor-pointer">
                     <div
                       className={`w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors hover:border-gray-400 ${
-                        errors.audioFile
+                        fileError
                           ? 'border-red-300 bg-red-50'
                           : 'border-gray-300'
                       }`}
@@ -269,7 +272,7 @@ const AudioCreate = () => {
                       </p>
                     </div>
                   </Label>
-                  {!selectedFile && (
+                  {fileError && (
                     <p className="mt-2 text-sm text-red-600">{fileError}</p>
                   )}
                 </div>
@@ -296,9 +299,6 @@ const AudioCreate = () => {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  {!selectedFile && (
-                    <p className="mt-2 text-sm text-red-600">{fileError}</p>
-                  )}
 
                   {audioUrl && (
                     <div className="rounded-lg border border-gray-200 p-4">
@@ -370,13 +370,21 @@ const AudioCreate = () => {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="postTitle">タイトル *</Label>
-              <Input
-                id="postTitle"
-                {...register('postTitle', validationRules.postTitle)}
-                className={
-                  errors.postTitle ? 'border-red-500 focus:border-red-500' : ''
-                }
-              />
+              <div className="relative">
+                <Input
+                  id="postTitle"
+                  {...register('postTitle', validationRules.postTitle)}
+                  className={`pr-12 ${
+                    errors.postTitle
+                      ? 'border-red-500 focus:border-red-500'
+                      : ''
+                  }`}
+                  maxLength={50}
+                />
+                <div className="absolute right-2 bottom-2 text-xs text-gray-400">
+                  {(postTitleValue || '').length}/50
+                </div>
+              </div>
               {errors.postTitle && (
                 <p className="text-sm text-red-600">
                   {errors.postTitle.message}
@@ -387,14 +395,18 @@ const AudioCreate = () => {
             <div className="space-y-2">
               <Label htmlFor="xId">Xアカウント</Label>
               <div className="relative">
-                <span className="absolute top-1/2 left-3 -translate-y-1/2 transform text-gray-500">
+                <span className="absolute top-1/2 left-3 z-10 -translate-y-1/2 transform text-gray-500">
                   @
                 </span>
                 <Input
                   id="xId"
-                  className={`pl-8 ${errors.xId ? 'border-red-500 focus:border-red-500' : ''}`}
+                  className={`pr-12 pl-8 ${errors.xId ? 'border-red-500 focus:border-red-500' : ''}`}
                   {...register('xId', validationRules.xId)}
+                  maxLength={15}
                 />
+                <div className="absolute right-2 bottom-2 text-xs text-gray-400">
+                  {(xIdValue || '').length}/15
+                </div>
               </div>
               {errors.xId && (
                 <p className="text-sm text-red-600">{errors.xId.message}</p>
@@ -435,16 +447,25 @@ const AudioCreate = () => {
 
             <div className="space-y-2">
               <Label htmlFor="deletePassword">削除用パスワード *</Label>
-              <Input
-                id="deletePassword"
-                type="password"
-                {...register('deletePassword', validationRules.deletePassword)}
-                className={
-                  errors.deletePassword
-                    ? 'border-red-500 focus:border-red-500'
-                    : ''
-                }
-              />
+              <div className="relative">
+                <Input
+                  id="deletePassword"
+                  type="password"
+                  {...register(
+                    'deletePassword',
+                    validationRules.deletePassword
+                  )}
+                  className={`pr-12 ${
+                    errors.deletePassword
+                      ? 'border-red-500 focus:border-red-500'
+                      : ''
+                  }`}
+                  maxLength={50}
+                />
+                <div className="absolute right-2 bottom-2 text-xs text-gray-400">
+                  {(deletePasswordValue || '').length}/50
+                </div>
+              </div>
               {errors.deletePassword && (
                 <p className="text-sm text-red-600">
                   {errors.deletePassword.message}
