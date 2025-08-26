@@ -1,3 +1,4 @@
+import React, { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +18,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Upload, Mic } from 'lucide-react'
+import { Upload, Mic, Play, Pause, Trash2 } from 'lucide-react'
+import { Slider } from '@/components/ui/slider'
 
 const AudioCreate = () => {
   const {
@@ -39,6 +41,14 @@ const AudioCreate = () => {
     },
   })
 
+  const [audioUrl, setAudioUrl] = useState(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const audioRef = useRef(null)
+
+  const selectedFile = watch('audioFile')
+
   const onSubmit = (data) => {
     console.log('Form Data:', data)
   }
@@ -47,8 +57,65 @@ const AudioCreate = () => {
     const file = e.target.files?.[0]
     if (file) {
       setValue('audioFile', file)
+      const url = URL.createObjectURL(file)
+      setAudioUrl(url)
     }
   }
+
+  const removeFile = () => {
+    setValue('audioFile', null)
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl)
+      setAudioUrl(null)
+    }
+    setIsPlaying(false)
+    setCurrentTime(0)
+    setDuration(0)
+    // input要素もリセット
+    const fileInput = document.getElementById('audioFile')
+    if (fileInput) {
+      fileInput.value = ''
+    }
+  }
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+      } else {
+        audioRef.current.play()
+      }
+      setIsPlaying(!isPlaying)
+    }
+  }
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime)
+    }
+  }
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration)
+    }
+  }
+
+  const formatTime = (time) => {
+    if (isNaN(time)) return '0:00'
+    const minutes = Math.floor(time / 60)
+    const seconds = Math.floor(time % 60)
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl)
+      }
+    }
+  }, [audioUrl])
 
   return (
     <div className="space-y-6 pb-15">
@@ -56,7 +123,7 @@ const AudioCreate = () => {
         <h1 className="text-foreground text-2xl font-bold">音声投稿</h1>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div className="space-y-6">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -68,15 +135,95 @@ const AudioCreate = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <Label htmlFor="audioFile" className="cursor-pointer">
-                <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-gray-400">
-                  <Upload className="mx-auto mb-2 h-12 w-12 text-gray-400" />
-                  <p className="mt-1 text-sm text-gray-400">
-                    MP3, WAV, M4A (最大 50MB)
-                  </p>
+            <div className="space-y-4">
+              {!selectedFile ? (
+                <Label htmlFor="audioFile" className="cursor-pointer">
+                  <div className="w-full rounded-lg border-2 border-dashed border-gray-300 p-8 text-center transition-colors hover:border-gray-400">
+                    <Upload className="mx-auto mb-2 h-12 w-12 text-gray-400" />
+                    <p className="text-sm text-gray-600">
+                      ファイルを選択またはドラッグ&ドロップ
+                    </p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      MP3, WAV, M4A (最大 50MB)
+                    </p>
+                  </div>
+                </Label>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
+                    <div className="flex items-center gap-3">
+                      <Mic className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {selectedFile.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={removeFile}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {audioUrl && (
+                    <div className="rounded-lg border border-gray-200 p-4">
+                      <div className="flex items-center gap-4">
+                        <Button
+                          onClick={togglePlay}
+                          variant="outline"
+                          size="sm"
+                          className="h-10 w-10 rounded-full p-0"
+                        >
+                          {isPlaying ? (
+                            <Pause className="h-4 w-4 text-white" />
+                          ) : (
+                            <Play className="h-4 w-4 text-white" />
+                          )}
+                        </Button>
+
+                        <div className="flex-1">
+                          <Slider
+                            value={[
+                              duration ? (currentTime / duration) * 100 : 0,
+                            ]}
+                            onValueChange={(value) => {
+                              if (audioRef.current && duration) {
+                                const newTime = (value[0] / 100) * duration
+                                audioRef.current.currentTime = newTime
+                                setCurrentTime(newTime)
+                              }
+                            }}
+                            max={100}
+                            step={0.1}
+                            className="w-full"
+                          />
+
+                          <div className="mt-1 flex justify-between text-xs text-gray-500">
+                            <span>{formatTime(currentTime)}</span>
+                            <span>{formatTime(duration)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <audio
+                        ref={audioRef}
+                        src={audioUrl}
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onEnded={() => setIsPlaying(false)}
+                      />
+                    </div>
+                  )}
                 </div>
-              </Label>
+              )}
+
               <Input
                 id="audioFile"
                 type="file"
@@ -165,10 +312,14 @@ const AudioCreate = () => {
           </CardContent>
         </Card>
 
-        <Button type="submit" className="bg-primary-gradient w-full" size="lg">
+        <Button
+          onClick={handleSubmit(onSubmit)}
+          className="bg-primary-gradient w-full"
+          size="lg"
+        >
           <p className="text-lg text-white">投稿する</p>
         </Button>
-      </form>
+      </div>
     </div>
   )
 }
