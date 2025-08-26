@@ -28,16 +28,15 @@ const AudioCreate = () => {
     setValue,
     watch,
     formState: { errors },
+    trigger,
   } = useForm({
     defaultValues: {
       audioFile: null,
       postTitle: '',
-      authorName: '',
       xId: '',
       deletePassword: '',
       allowPromotion: false,
       gender: '',
-      identificationId: '',
     },
   })
 
@@ -45,17 +44,132 @@ const AudioCreate = () => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [fileError, setFileError] = useState('')
   const audioRef = useRef(null)
 
   const selectedFile = watch('audioFile')
 
+  // バリデーションルール
+  const validationRules = {
+    audioFile: {
+      validate: {
+        required: (value) =>
+          (value !== null && value !== undefined) ||
+          '音声ファイルを選択してください',
+        fileType: (value) => {
+          if (!value) return '音声ファイルを選択してください'
+          const allowedTypes = [
+            'audio/mp3',
+            'audio/mpeg',
+            'audio/wav',
+            'audio/m4a',
+            'audio/mp4',
+          ]
+          return (
+            allowedTypes.includes(value.type) ||
+            'MP3、WAV、M4Aファイルのみアップロード可能です'
+          )
+        },
+        fileSize: (value) => {
+          if (!value) return '音声ファイルを選択してください'
+          const maxSize = 50 * 1024 * 1024 // 50MB
+          return (
+            value.size <= maxSize || 'ファイルサイズは50MB以下にしてください'
+          )
+        },
+      },
+    },
+    postTitle: {
+      required: 'タイトルは必須です',
+      maxLength: {
+        value: 50,
+        message: 'タイトルは50文字以下で入力してください',
+      },
+      pattern: {
+        value: /^(?!\s*$).+/,
+        message: 'タイトルは空白のみでは入力できません',
+      },
+    },
+    xId: {
+      maxLength: {
+        value: 15, // Xの最大ID長
+        message: 'XのIDは15文字以下で入力してください',
+      },
+      pattern: {
+        value: /^[a-zA-Z0-9_]*$/,
+        message: 'XのIDは半角英数字とアンダースコアのみ使用可能です',
+      },
+    },
+    deletePassword: {
+      required: '削除用パスワードは必須です',
+      maxLength: {
+        value: 50,
+        message: 'パスワードは50文字以下で入力してください',
+      },
+      pattern: {
+        value:
+          /^[^\s\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]+$/u,
+        message: 'パスワードに空白や絵文字は使用できません',
+      },
+    },
+    gender: {
+      validate: (value) => {
+        if (!value || value === '') return '性別を選択してください'
+        return (
+          ['male', 'female'].includes(value) || '有効な性別を選択してください'
+        )
+      },
+    },
+    allowPromotion: {
+      required: '宣伝許可の選択は必須です',
+    },
+  }
+
   const onSubmit = (data) => {
+    // 音声ファイルの手動バリデーション
+    if (!selectedFile) {
+      setFileError('音声ファイルを選択してください')
+      return
+    }
+
     console.log('Form Data:', data)
   }
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
+    setFileError('') // エラーをリセット
+
     if (file) {
+      // ファイルバリデーション
+      const allowedTypes = [
+        'audio/mp3',
+        'audio/mpeg',
+        'audio/wav',
+        'audio/m4a',
+        'audio/mp4',
+      ]
+      const maxSize = 50 * 1024 * 1024 // 50MB
+
+      if (!allowedTypes.includes(file.type)) {
+        setValue('audioFile', null)
+        const errorMsg = 'MP3、WAV、M4Aファイルのみアップロード可能です'
+        setFileError(errorMsg)
+        alert(errorMsg)
+        // input要素もリセット
+        e.target.value = ''
+        return
+      }
+
+      if (file.size > maxSize) {
+        setValue('audioFile', null)
+        const errorMsg = 'ファイルサイズは50MB以下にしてください'
+        setFileError(errorMsg)
+        alert(errorMsg)
+        // input要素もリセット
+        e.target.value = ''
+        return
+      }
+
       setValue('audioFile', file)
       const url = URL.createObjectURL(file)
       setAudioUrl(url)
@@ -64,6 +178,7 @@ const AudioCreate = () => {
 
   const removeFile = () => {
     setValue('audioFile', null)
+    setFileError('') // エラーもリセット
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl)
       setAudioUrl(null)
@@ -108,7 +223,6 @@ const AudioCreate = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
-  // クリーンアップ
   useEffect(() => {
     return () => {
       if (audioUrl) {
@@ -137,17 +251,28 @@ const AudioCreate = () => {
           <CardContent>
             <div className="space-y-4">
               {!selectedFile ? (
-                <Label htmlFor="audioFile" className="cursor-pointer">
-                  <div className="w-full rounded-lg border-2 border-dashed border-gray-300 p-8 text-center transition-colors hover:border-gray-400">
-                    <Upload className="mx-auto mb-2 h-12 w-12 text-gray-400" />
-                    <p className="text-sm text-gray-600">
-                      ファイルを選択またはドラッグ&ドロップ
-                    </p>
-                    <p className="mt-1 text-sm text-gray-400">
-                      MP3, WAV, M4A (最大 50MB)
-                    </p>
-                  </div>
-                </Label>
+                <div>
+                  <Label htmlFor="audioFile" className="cursor-pointer">
+                    <div
+                      className={`w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors hover:border-gray-400 ${
+                        errors.audioFile
+                          ? 'border-red-300 bg-red-50'
+                          : 'border-gray-300'
+                      }`}
+                    >
+                      <Upload className="mx-auto mb-2 h-12 w-12 text-gray-400" />
+                      <p className="text-sm text-gray-600">
+                        ファイルを選択またはドラッグ&ドロップ
+                      </p>
+                      <p className="mt-1 text-sm text-gray-400">
+                        MP3, WAV, M4A (最大 50MB)
+                      </p>
+                    </div>
+                  </Label>
+                  {!selectedFile && (
+                    <p className="mt-2 text-sm text-red-600">{fileError}</p>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
@@ -171,6 +296,9 @@ const AudioCreate = () => {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                  {!selectedFile && (
+                    <p className="mt-2 text-sm text-red-600">{fileError}</p>
+                  )}
 
                   {audioUrl && (
                     <div className="rounded-lg border border-gray-200 p-4">
@@ -242,7 +370,18 @@ const AudioCreate = () => {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="postTitle">タイトル *</Label>
-              <Input id="postTitle" {...register('postTitle')} />
+              <Input
+                id="postTitle"
+                {...register('postTitle', validationRules.postTitle)}
+                className={
+                  errors.postTitle ? 'border-red-500 focus:border-red-500' : ''
+                }
+              />
+              {errors.postTitle && (
+                <p className="text-sm text-red-600">
+                  {errors.postTitle.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -251,8 +390,15 @@ const AudioCreate = () => {
                 <span className="absolute top-1/2 left-3 -translate-y-1/2 transform text-gray-500">
                   @
                 </span>
-                <Input id="xId" className="pl-8" {...register('xId')} />
+                <Input
+                  id="xId"
+                  className={`pl-8 ${errors.xId ? 'border-red-500 focus:border-red-500' : ''}`}
+                  {...register('xId', validationRules.xId)}
+                />
               </div>
+              {errors.xId && (
+                <p className="text-sm text-red-600">{errors.xId.message}</p>
+              )}
               <p className="text-muted-foreground text-sm">
                 投稿者名として扱われます。設定しない場合は「名無しのオホゴエニスト」として表示されます
               </p>
@@ -260,8 +406,21 @@ const AudioCreate = () => {
 
             <div className="space-y-2">
               <Label>性別 *</Label>
-              <Select onValueChange={(value) => setValue('gender', value)}>
-                <SelectTrigger>
+              <input
+                type="hidden"
+                {...register('gender', validationRules.gender)}
+              />
+              <Select
+                onValueChange={(value) => {
+                  setValue('gender', value)
+                  trigger('gender')
+                }}
+              >
+                <SelectTrigger
+                  className={
+                    errors.gender ? 'border-red-500 focus:border-red-500' : ''
+                  }
+                >
                   <SelectValue placeholder="選択してください" />
                 </SelectTrigger>
                 <SelectContent>
@@ -269,6 +428,9 @@ const AudioCreate = () => {
                   <SelectItem value="female">女性</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.gender && (
+                <p className="text-sm text-red-600">{errors.gender.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -276,8 +438,18 @@ const AudioCreate = () => {
               <Input
                 id="deletePassword"
                 type="password"
-                {...register('deletePassword')}
+                {...register('deletePassword', validationRules.deletePassword)}
+                className={
+                  errors.deletePassword
+                    ? 'border-red-500 focus:border-red-500'
+                    : ''
+                }
               />
+              {errors.deletePassword && (
+                <p className="text-sm text-red-600">
+                  {errors.deletePassword.message}
+                </p>
+              )}
               <p className="text-muted-foreground text-sm">
                 投稿を削除する際に必要となります。忘れないようにしてください
               </p>
@@ -290,24 +462,32 @@ const AudioCreate = () => {
             <CardTitle className="text-lg">オプション</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="allowPromotion"
-                onCheckedChange={(checked) =>
-                  setValue('allowPromotion', checked)
-                }
-              />
-              <div className="space-y-1">
-                <Label
-                  htmlFor="allowPromotion"
-                  className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Ohohub公式Xでの宣伝を許可する
-                </Label>
-                <p className="text-muted-foreground text-sm">
-                  チェックすると、公式xアカウントであなたの投稿が紹介される場合があります
-                </p>
+            <div className="space-y-3">
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="allowPromotion"
+                  onCheckedChange={(checked) => {
+                    setValue('allowPromotion', checked)
+                    trigger('allowPromotion')
+                  }}
+                />
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="allowPromotion"
+                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Ohohub公式Xでの宣伝を許可する
+                  </Label>
+                  <p className="text-muted-foreground text-sm">
+                    チェックすると、公式xアカウントであなたの投稿が紹介される場合があります
+                  </p>
+                </div>
               </div>
+              {errors.allowPromotion && (
+                <p className="text-sm text-red-600">
+                  {errors.allowPromotion.message}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
