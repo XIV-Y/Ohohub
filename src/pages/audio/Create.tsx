@@ -21,7 +21,7 @@ import {
 import { Upload, Mic, Play, Pause, Trash2 } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { preparePasswordForStorage } from '@/utils/passwordUtils'
-import { uploadAudio } from '../../lib/api'
+import { uploadAudio } from '@/lib/api'
 
 // フォームデータの型定義
 interface FormData {
