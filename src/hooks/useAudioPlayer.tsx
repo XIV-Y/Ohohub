@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 
-const useAudioPlayer = () => {
+const useAudioPlayer = (post: unknown) => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -26,7 +26,7 @@ const useAudioPlayer = () => {
       audio.removeEventListener('loadedmetadata', updateDuration)
       audio.removeEventListener('ended', handleEnded)
     }
-  }, [])
+  }, [post])
 
   const togglePlayPause = () => {
     const audio = audioRef.current
