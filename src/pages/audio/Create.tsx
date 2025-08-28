@@ -21,7 +21,50 @@ import {
 import { Upload, Mic, Play, Pause, Trash2 } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 
-const AudioCreate = () => {
+// フォームデータの型定義
+interface FormData {
+  audioFile: File | null
+  postTitle: string
+  xId: string
+  deletePassword: string
+  allowPromotion: boolean
+  gender: string
+}
+
+// パスワード暗号化ユーティリティ（1カラム保存用）
+const hashPassword = async (
+  password: string,
+  salt: string
+): Promise<string> => {
+  const saltedPassword = salt + password
+  const encoder = new TextEncoder()
+  const data = encoder.encode(saltedPassword)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  return hashHex
+}
+
+const generateSalt = (length: number = 16): string => {
+  const characters =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length))
+  }
+  return result
+}
+
+// 1カラム用：パスワードを暗号化（ソルト:ハッシュの形式）
+const preparePasswordForStorage = async (password: string): Promise<string> => {
+  const salt = generateSalt(16)
+  const hash = await hashPassword(password, salt)
+  return `${salt}:${hash}`
+}
+
+const AudioCreate: React.FC = () => {
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+
   const {
     register,
     handleSubmit,
@@ -29,7 +72,7 @@ const AudioCreate = () => {
     watch,
     formState: { errors },
     trigger,
-  } = useForm({
+  } = useForm<FormData>({
     defaultValues: {
       audioFile: null,
       postTitle: '',
@@ -40,12 +83,12 @@ const AudioCreate = () => {
     },
   })
 
-  const [audioUrl, setAudioUrl] = useState(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [fileError, setFileError] = useState('')
-  const audioRef = useRef(null)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [isPlaying, setIsPlaying] = useState<boolean>(false)
+  const [currentTime, setCurrentTime] = useState<number>(0)
+  const [duration, setDuration] = useState<number>(0)
+  const [fileError, setFileError] = useState<string>('')
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const selectedFile = watch('audioFile')
   const postTitleValue = watch('postTitle')
@@ -56,10 +99,10 @@ const AudioCreate = () => {
   const validationRules = {
     audioFile: {
       validate: {
-        required: (value) =>
+        required: (value: File | null) =>
           (value !== null && value !== undefined) ||
           '音声ファイルを選択してください',
-        fileType: (value) => {
+        fileType: (value: File | null) => {
           if (!value) return '音声ファイルを選択してください'
           const allowedTypes = [
             'audio/mp3',
@@ -73,7 +116,7 @@ const AudioCreate = () => {
             'MP3、WAV、M4Aファイルのみアップロード可能です'
           )
         },
-        fileSize: (value) => {
+        fileSize: (value: File | null) => {
           if (!value) return '音声ファイルを選択してください'
           const maxSize = 50 * 1024 * 1024 // 50MB
           return (
@@ -95,7 +138,7 @@ const AudioCreate = () => {
     },
     xId: {
       maxLength: {
-        value: 15, // Xの最大ID長
+        value: 15,
         message: 'XのIDは15文字以下で入力してください',
       },
       pattern: {
@@ -116,7 +159,7 @@ const AudioCreate = () => {
       },
     },
     gender: {
-      validate: (value) => {
+      validate: (value: string) => {
         if (!value || value === '') return '性別を選択してください'
         return (
           ['male', 'female'].includes(value) || '有効な性別を選択してください'
@@ -128,22 +171,57 @@ const AudioCreate = () => {
     },
   }
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data: FormData): Promise<void> => {
     // 音声ファイルの手動バリデーション
     if (!selectedFile) {
       setFileError('音声ファイルを選択してください')
       return
     }
 
-    console.log('Form Data:', data)
+    setIsSubmitting(true)
+
+    try {
+      // パスワードを1カラム用に暗号化
+      const encryptedPassword = await preparePasswordForStorage(
+        data.deletePassword
+      )
+
+      // FormDataを作成
+      const formData = new FormData()
+      formData.append('audioFile', selectedFile)
+      formData.append('postTitle', data.postTitle)
+      formData.append('xId', data.xId || '')
+      formData.append('passwordHash', encryptedPassword) // 1つのフィールドに統合
+      formData.append('allowPromotion', data.allowPromotion.toString())
+      formData.append('gender', data.gender)
+
+      // TODO: Cloudflare Workersに送信
+      console.log('Form Data:', {
+        audioFile: selectedFile,
+        postTitle: data.postTitle,
+        xId: data.xId,
+        passwordHash: encryptedPassword, // "salt:hash" 形式
+        allowPromotion: data.allowPromotion,
+        gender: data.gender,
+      })
+
+      // 仮の成功処理
+      alert('音声が投稿されました！')
+    } catch (error) {
+      console.error('投稿エラー:', error)
+      alert('投稿に失敗しました')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ): Promise<void> => {
     const file = e.target.files?.[0]
-    setFileError('') // エラーをリセット
+    setFileError('')
 
     if (file) {
-      // ファイルバリデーション
       const allowedTypes = [
         'audio/mp3',
         'audio/mpeg',
@@ -151,14 +229,13 @@ const AudioCreate = () => {
         'audio/m4a',
         'audio/mp4',
       ]
-      const maxSize = 50 * 1024 * 1024 // 50MB
+      const maxSize = 50 * 1024 * 1024
 
       if (!allowedTypes.includes(file.type)) {
         setValue('audioFile', null)
         const errorMsg = 'MP3、WAV、M4Aファイルのみアップロード可能です'
         setFileError(errorMsg)
         alert(errorMsg)
-        // input要素もリセット
         e.target.value = ''
         return
       }
@@ -168,7 +245,6 @@ const AudioCreate = () => {
         const errorMsg = 'ファイルサイズは50MB以下にしてください'
         setFileError(errorMsg)
         alert(errorMsg)
-        // input要素もリセット
         e.target.value = ''
         return
       }
@@ -179,9 +255,9 @@ const AudioCreate = () => {
     }
   }
 
-  const removeFile = () => {
+  const removeFile = (): void => {
     setValue('audioFile', null)
-    setFileError('') // エラーもリセット
+    setFileError('')
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl)
       setAudioUrl(null)
@@ -189,14 +265,13 @@ const AudioCreate = () => {
     setIsPlaying(false)
     setCurrentTime(0)
     setDuration(0)
-    // input要素もリセット
-    const fileInput = document.getElementById('audioFile')
+    const fileInput = document.getElementById('audioFile') as HTMLInputElement
     if (fileInput) {
       fileInput.value = ''
     }
   }
 
-  const togglePlay = () => {
+  const togglePlay = (): void => {
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause()
@@ -207,19 +282,19 @@ const AudioCreate = () => {
     }
   }
 
-  const handleTimeUpdate = () => {
+  const handleTimeUpdate = (): void => {
     if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime)
     }
   }
 
-  const handleLoadedMetadata = () => {
+  const handleLoadedMetadata = (): void => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration)
     }
   }
 
-  const formatTime = (time) => {
+  const formatTime = (time: number): string => {
     if (isNaN(time)) return '0:00'
     const minutes = Math.floor(time / 60)
     const seconds = Math.floor(time % 60)
@@ -321,7 +396,7 @@ const AudioCreate = () => {
                             value={[
                               duration ? (currentTime / duration) * 100 : 0,
                             ]}
-                            onValueChange={(value) => {
+                            onValueChange={(value: number[]) => {
                               if (audioRef.current && duration) {
                                 const newTime = (value[0] / 100) * duration
                                 audioRef.current.currentTime = newTime
@@ -423,7 +498,7 @@ const AudioCreate = () => {
                 {...register('gender', validationRules.gender)}
               />
               <Select
-                onValueChange={(value) => {
+                onValueChange={(value: string) => {
                   setValue('gender', value)
                   trigger('gender')
                 }}
@@ -487,7 +562,7 @@ const AudioCreate = () => {
               <div className="flex items-start space-x-3">
                 <Checkbox
                   id="allowPromotion"
-                  onCheckedChange={(checked) => {
+                  onCheckedChange={(checked: boolean) => {
                     setValue('allowPromotion', checked)
                     trigger('allowPromotion')
                   }}
@@ -517,8 +592,11 @@ const AudioCreate = () => {
           onClick={handleSubmit(onSubmit)}
           className="bg-primary-gradient w-full"
           size="lg"
+          disabled={isSubmitting}
         >
-          <p className="text-lg text-white">投稿する</p>
+          <p className="text-lg text-white">
+            {isSubmitting ? '投稿中...' : '投稿する'}
+          </p>
         </Button>
       </div>
     </div>
