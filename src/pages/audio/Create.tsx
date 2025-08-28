@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/card'
 import { Upload, Mic, Play, Pause, Trash2 } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
+import { preparePasswordForStorage } from '@/utils/passwordUtils'
+import { uploadAudio } from '../../lib/api'
 
 // フォームデータの型定義
 interface FormData {
@@ -29,37 +31,6 @@ interface FormData {
   deletePassword: string
   allowPromotion: boolean
   gender: string
-}
-
-// パスワード暗号化ユーティリティ（1カラム保存用）
-const hashPassword = async (
-  password: string,
-  salt: string
-): Promise<string> => {
-  const saltedPassword = salt + password
-  const encoder = new TextEncoder()
-  const data = encoder.encode(saltedPassword)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-  return hashHex
-}
-
-const generateSalt = (length: number = 16): string => {
-  const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let result = ''
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length))
-  }
-  return result
-}
-
-// 1カラム用：パスワードを暗号化（ソルト:ハッシュの形式）
-const preparePasswordForStorage = async (password: string): Promise<string> => {
-  const salt = generateSalt(16)
-  const hash = await hashPassword(password, salt)
-  return `${salt}:${hash}`
 }
 
 const AudioCreate: React.FC = () => {
@@ -205,8 +176,14 @@ const AudioCreate: React.FC = () => {
         gender: data.gender,
       })
 
-      // 仮の成功処理
-      alert('音声が投稿されました！')
+      const result = await uploadAudio(formData)
+      console.log(result)
+      if (result.success) {
+        alert('音声が投稿されました！')
+        // フォームリセット処理
+      } else {
+        alert('投稿に失敗しました: ' + result.error)
+      }
     } catch (error) {
       console.error('投稿エラー:', error)
       alert('投稿に失敗しました')
