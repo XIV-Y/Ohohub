@@ -127,18 +127,22 @@ const Home: React.FC = () => {
       <div className="space-y-4 text-center">
         <div className="flex justify-center space-x-4">
           <Link to="/audio/create">
-            <Button className="bg-primary-gradient">
+            <Button className="bg-primary-gradient cursor-pointer">
               <Volume2 className="mr-2 h-4 w-4 text-white" />
               <span className="text-white">音声を投稿する</span>
             </Button>
           </Link>
           <Link to="/audio">
-            <Button variant="outline">すべての投稿を見る</Button>
+            <Button
+              className="cursor-pointer hover:bg-current hover:text-current hover:opacity-100 hover:shadow-none"
+              variant="outline"
+            >
+              すべての投稿を見る
+            </Button>
           </Link>
         </div>
       </div>
 
-      {/* 女性の投稿 */}
       <section className="space-y-4">
         <SectionTitle title="女性の投稿" />
         {femaleStats.length === 0 ? (
@@ -157,7 +161,6 @@ const Home: React.FC = () => {
         )}
       </section>
 
-      {/* 男性の投稿 */}
       <section className="space-y-4">
         <SectionTitle title="男性の投稿" />
         {maleStats.length === 0 ? (
@@ -176,7 +179,6 @@ const Home: React.FC = () => {
         )}
       </section>
 
-      {/* 最新投稿 */}
       <section className="space-y-4">
         <SectionTitle title="最新投稿" />
         {latestPosts.length === 0 ? (

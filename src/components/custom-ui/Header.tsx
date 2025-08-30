@@ -13,7 +13,7 @@ function Header() {
         <div>
           <button
             onClick={toggleTheme}
-            className="relative rounded-lg border border-white/20 bg-white/10 p-2 transition-colors hover:border-white/30 hover:bg-white/20 focus:ring-2 focus:ring-white/50 focus:outline-none"
+            className="relative cursor-pointer rounded-lg border border-white/20 bg-white/10 p-2 transition-colors hover:border-white/30 hover:bg-white/20 focus:ring-2 focus:ring-white/50 focus:outline-none"
             aria-label={
               theme === 'light'
                 ? 'ダークモードに切り替え'
