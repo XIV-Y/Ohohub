@@ -7,11 +7,57 @@ import { useParams } from 'react-router-dom'
 import { getPost } from '../../lib/api'
 import useAudioPlayer from '../../hooks/useAudioPlayer'
 import NotFound from '../errors/NotFound'
+import { Heart, Bookmark, Share2, ExternalLink } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 const AudioDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const [post, setPost] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [isLiked, setIsLiked] = useState(false)
+  const [likeCount, setLikeCount] = useState(12) // ダミーデータ
+  const [isBookmarked, setIsBookmarked] = useState(false)
+
+  // ダミータグデータ
+  const dummyTags = ['音楽', 'ASMR', '癒し', 'オリジナル']
+
+  const handleLike = () => {
+    setIsLiked(!isLiked)
+    setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1))
+  }
+
+  const handleBookmark = () => {
+    setIsBookmarked(!isBookmarked)
+  }
+
+  const handleShare = async () => {
+    if (navigator.share && post) {
+      try {
+        await navigator.share({
+          title: post.title,
+          text: `${post.title} - 音声投稿をシェア`,
+          url: window.location.href,
+        })
+      } catch (error) {
+        navigator.clipboard.writeText(window.location.href)
+        alert('URLをクリップボードにコピーしました')
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      alert('URLをクリップボードにコピーしました')
+    }
+  }
+
+  const formatPostDate = (dateString: string): string => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
 
   useEffect(() => {
     if (id && !post) {
@@ -57,78 +103,141 @@ const AudioDetail: React.FC = () => {
   if (!post) return <NotFound />
 
   return (
-    <Card className="w-full">
-      <CardContent className="p-6">
-        <div className="space-y-6">
-          <audio ref={audioRef} src={post.audioUrl} preload="metadata" />
-
+    <div className="space-y-2">
+      <Card className="w-full">
+        <CardContent className="p-6">
           <div className="space-y-6">
-            <div className="space-y-2 text-center">
-              <h3 className="text-lg font-semibold">{post.title}</h3>
-              <p className="text-muted-foreground text-sm">
-                {post.xId ? `@${post.xId}` : '名無しのオホゴエニスト'}
-              </p>
-            </div>
+            <audio ref={audioRef} src={post.audioUrl} preload="metadata" />
 
-            <div className="text-muted-foreground flex justify-between text-sm">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-
-            <Slider
-              value={[progressPercentage]}
-              onValueChange={(value) => seek(value[0])}
-              max={100}
-              step={0.1}
-              className="w-full"
-            />
-
-            <div className="flex items-center justify-center space-x-4">
-              <Button
-                onClick={togglePlayPause}
-                size="icon"
-                className="h-12 w-12"
-              >
-                {isPlaying ? (
-                  <Pause className="h-6 w-6 text-white" />
-                ) : (
-                  <Play className="ml-1 h-6 w-6 text-white" />
-                )}
-              </Button>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleMute}
-                className="h-8 w-8"
-              >
-                {isMuted || volume === 0 ? (
-                  <VolumeX className="h-4 w-4" />
-                ) : (
-                  <Volume2 className="h-4 w-4" />
-                )}
-              </Button>
-
-              <div className="flex-1">
-                <Slider
-                  value={[isMuted ? 0 : volume]}
-                  onValueChange={(value) => changeVolume(value[0])}
-                  max={100}
-                  step={1}
-                  className="w-full"
-                />
+            <div className="space-y-6">
+              <div className="space-y-2 text-center">
+                <h3 className="text-lg font-semibold">{post.title}</h3>
+                <p className="text-muted-foreground text-sm">
+                  {post.xId ? `@${post.xId}` : '名無しのオホゴエニスト'}
+                </p>
               </div>
 
-              <span className="text-muted-foreground min-w-[3ch] text-sm">
-                {isMuted ? 0 : volume}
-              </span>
+              <div className="text-muted-foreground flex justify-between text-sm">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+
+              <Slider
+                value={[progressPercentage]}
+                onValueChange={(value) => seek(value[0])}
+                max={100}
+                step={0.1}
+                className="w-full"
+              />
+
+              <div className="flex items-center justify-center space-x-4">
+                <Button
+                  onClick={togglePlayPause}
+                  size="icon"
+                  className="h-12 w-12"
+                >
+                  {isPlaying ? (
+                    <Pause className="h-6 w-6 text-white" />
+                  ) : (
+                    <Play className="ml-1 h-6 w-6 text-white" />
+                  )}
+                </Button>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleMute}
+                  className="h-8 w-8"
+                >
+                  {isMuted || volume === 0 ? (
+                    <VolumeX className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+
+                <div className="flex-1">
+                  <Slider
+                    value={[isMuted ? 0 : volume]}
+                    onValueChange={(value) => changeVolume(value[0])}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+
+                <span className="text-muted-foreground min-w-[3ch] text-sm">
+                  {isMuted ? 0 : volume}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <Card className="p-0 pt-1">
+        <CardContent className="px-6 py-3">
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4">
+              <div>
+                <div>300再生</div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLike}
+                  className={`cursor-pointer text-white transition-colors hover:bg-current hover:text-current hover:opacity-100 hover:shadow-none ${isLiked ? 'border-red-200 bg-red-50 text-red-600' : ''}`}
+                >
+                  <Heart
+                    className={`mr-1 h-4 w-4 ${isLiked ? 'fill-current' : ''}`}
+                  />
+                  {likeCount}いいね
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBookmark}
+                  className={`cursor-pointer text-white transition-colors hover:bg-current hover:text-current hover:opacity-100 hover:shadow-none ${isBookmarked ? 'border-bluew-200 bg-blue-50 text-blue-600' : ''}`}
+                >
+                  <Bookmark
+                    className={`mr-1 h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`}
+                  />
+                  ブックマーク
+                </Button>
+
+                <Button variant="outline" size="sm" onClick={handleShare}>
+                  <Share2 className="mr-1 h-4 w-4" />
+                  シェア
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-center">
+              <h4 className="text-muted-foreground text-sm font-medium">
+                タグ
+              </h4>
+              <div className="flex flex-wrap justify-center gap-2">
+                {dummyTags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="text-sm">
+                    # {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <p className="text-muted-foreground text-sm">
+                {formatPostDate(post.createdAt)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
