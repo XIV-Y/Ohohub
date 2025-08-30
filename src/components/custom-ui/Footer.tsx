@@ -6,7 +6,7 @@ const Footer = () => {
     <nav className="fixed bottom-0 w-full border-t border-gray-200 bg-white">
       <div className="mx-auto flex w-full max-w-lg items-center">
         <Link
-          to="/search"
+          to="/"
           className="block flex-1 px-2 py-3 text-center hover:bg-gray-50"
         >
           <Home className="mx-auto mb-1 h-6 w-6 text-gray-500" />
@@ -24,7 +24,7 @@ const Footer = () => {
         </div>
 
         <Link
-          to="/search"
+          to="/audio"
           className="block flex-1 px-2 py-3 text-center hover:bg-gray-50"
         >
           <Search className="mx-auto mb-1 h-6 w-6 text-gray-500" />
