@@ -1,4 +1,5 @@
 import { useTheme } from '@/hooks/useTheme'
+import { Link } from 'react-router-dom'
 
 function Header() {
   const { theme, toggleTheme } = useTheme()
@@ -6,7 +7,9 @@ function Header() {
   return (
     <header className="bg-primary-gradient sticky top-0 z-50 flex w-full items-center justify-center p-3.5 text-white">
       <div className="flex w-full max-w-lg items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Ohohub</h1>
+        <Link to={'/'}>
+          <h1 className="text-2xl font-bold text-white">Ohohub</h1>
+        </Link>
         <div>
           <button
             onClick={toggleTheme}
