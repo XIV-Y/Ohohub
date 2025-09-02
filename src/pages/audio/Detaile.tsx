@@ -1,3 +1,4 @@
+// src/pages/audio/Detaile.tsx
 import { Card, CardContent } from '@/components/ui/card'
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,8 +8,13 @@ import { useParams } from 'react-router-dom'
 import { getPost } from '../../lib/api'
 import useAudioPlayer from '../../hooks/useAudioPlayer'
 import NotFound from '../errors/NotFound'
-import { Heart, Bookmark, Share2, ExternalLink } from 'lucide-react'
+import { Heart, Bookmark, Share2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import {
+  addBookmark,
+  removeBookmark,
+  isBookmarked,
+} from '@/utils/bookmarkUtils'
 
 const AudioDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -16,10 +22,32 @@ const AudioDetail: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(12) // ダミーデータ
-  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [isBookmarkedState, setIsBookmarkedState] = useState(false)
 
   // ダミータグデータ
   const dummyTags = ['音楽', 'ASMR', '癒し', 'オリジナル']
+
+  useEffect(() => {
+    if (id && !post) {
+      fetchPost(id)
+    }
+  }, [id, post])
+
+  useEffect(() => {
+    if (post) {
+      // ブックマーク状態を確認
+      setIsBookmarkedState(isBookmarked(post.id))
+    }
+  }, [post])
+
+  const fetchPost = async (postId: string) => {
+    const result = await getPost(postId)
+    if (result.success) {
+      console.log('OK3')
+      setPost(result.post)
+    }
+    setLoading(false)
+  }
 
   const handleLike = () => {
     setIsLiked(!isLiked)
@@ -27,7 +55,26 @@ const AudioDetail: React.FC = () => {
   }
 
   const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked)
+    if (!post) return
+
+    try {
+      if (isBookmarkedState) {
+        removeBookmark(post.id)
+        setIsBookmarkedState(false)
+      } else {
+        addBookmark({
+          id: post.id,
+          title: post.title,
+          xId: post.xId,
+          gender: post.gender,
+          createdAt: post.createdAt,
+        })
+        setIsBookmarkedState(true)
+      }
+    } catch (error) {
+      console.error('ブックマーク操作エラー:', error)
+      alert('ブックマーク操作に失敗しました')
+    }
   }
 
   const handleShare = async () => {
@@ -38,7 +85,7 @@ const AudioDetail: React.FC = () => {
           text: `${post.title} - 音声投稿をシェア`,
           url: window.location.href,
         })
-      } catch (error) {
+      } catch {
         navigator.clipboard.writeText(window.location.href)
         alert('URLをクリップボードにコピーしました')
       }
@@ -57,21 +104,6 @@ const AudioDetail: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit',
     })
-  }
-
-  useEffect(() => {
-    if (id && !post) {
-      fetchPost(id)
-    }
-  }, [id, post])
-
-  const fetchPost = async (postId: string) => {
-    const result = await getPost(postId)
-    if (result.success) {
-      console.log('OK3')
-      setPost(result.post)
-    }
-    setLoading(false)
   }
 
   const {
@@ -95,8 +127,6 @@ const AudioDetail: React.FC = () => {
   }
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0
-
-  console.log(progressPercentage)
 
   if (loading) return
 
@@ -201,12 +231,12 @@ const AudioDetail: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleBookmark}
-                  className={`cursor-pointer text-white transition-colors hover:bg-current hover:text-current hover:opacity-100 hover:shadow-none ${isBookmarked ? 'border-bluew-200 bg-blue-50 text-blue-600' : ''}`}
+                  className={`cursor-pointer text-white transition-colors hover:bg-current hover:text-current hover:opacity-100 hover:shadow-none ${isBookmarkedState ? 'border-blue-200 bg-blue-50 text-blue-600' : ''}`}
                 >
                   <Bookmark
-                    className={`mr-1 h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`}
+                    className={`mr-1 h-4 w-4 ${isBookmarkedState ? 'fill-current' : ''}`}
                   />
-                  ブックマーク
+                  {isBookmarkedState ? 'ブックマーク済み' : 'ブックマーク'}
                 </Button>
 
                 <Button variant="outline" size="sm" onClick={handleShare}>
