@@ -5,8 +5,9 @@ import NotFound from '@/pages/errors/NotFound'
 import AudioCreate from '@/pages/audio/Create'
 import Layout from '@/components/custom-ui/Layout'
 import AudioDetail from '@/pages/audio/Detaile'
-import AudioSearch from './pages/audio/Serach'
+import AudioSearch from '@/pages/audio/Serach'
 import { useEffect } from 'react'
+import BookmarksPage from '@/pages/audio/Bookmark'
 
 export default function App() {
   const { pathname } = useLocation()
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/audio" element={<AudioSearch />} />
         <Route path="/audio/:id" element={<AudioDetail />} />
         <Route path="/audio/create" element={<AudioCreate />} />
+        <Route path="/bookmarks" element={<BookmarksPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
