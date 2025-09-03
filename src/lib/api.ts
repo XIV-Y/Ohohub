@@ -1,3 +1,4 @@
+// src/lib/api.ts
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
 export const uploadAudio = async (formData: FormData) => {
@@ -40,6 +41,13 @@ export interface Post {
   allowPromotion: boolean;
   createdAt: string;
   audioUrl: string;
+  tags?: Tag[];
+}
+
+export interface Tag {
+  id: number;
+  name: string;
+  createdAt: string;
 }
 
 export const getPosts = async (params: {
@@ -48,6 +56,7 @@ export const getPosts = async (params: {
   postTitle?: string;
   xId?: string;
   gender?: string;
+  tagId?: number;
 }): Promise<PostsResponse> => {
   try {
     const searchParams = new URLSearchParams();
@@ -56,10 +65,20 @@ export const getPosts = async (params: {
     if (params.postTitle) searchParams.set('postTitle', params.postTitle);
     if (params.xId) searchParams.set('xId', params.xId);
     if (params.gender) searchParams.set('gender', params.gender);
+    if (params.tagId) searchParams.set('tagId', params.tagId.toString());
 
     const response = await fetch(`${API_BASE}/api/posts?${searchParams}`);
     return await response.json();
   } catch (error) {
     return { success: false, posts: [], pagination: {} as any, error: 'データ取得に失敗しました' };
+  }
+};
+
+export const getTags = async (): Promise<{success: boolean; tags: Tag[]; error?: string}> => {
+  try {
+    const response = await fetch(`${API_BASE}/api/tags`);
+    return await response.json();
+  } catch (error) {
+    return { success: false, tags: [], error: 'タグ取得に失敗しました' };
   }
 };

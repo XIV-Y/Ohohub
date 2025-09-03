@@ -18,10 +18,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Upload, Mic, Play, Pause, Trash2 } from 'lucide-react'
+import { Upload, Mic, Play, Pause, Trash2, Tag as TagIcon } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { preparePasswordForStorage } from '@/utils/passwordUtils'
-import { uploadAudio } from '@/lib/api'
+import { uploadAudio, getTags, type Tag } from '@/lib/api'
+import { Badge } from '@/components/ui/badge'
 
 // フォームデータの型定義
 interface FormData {
@@ -31,10 +32,13 @@ interface FormData {
   deletePassword: string
   allowPromotion: boolean
   gender: string
+  selectedTags: number[]
 }
 
 const AudioCreate: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [tags, setTags] = useState<Tag[]>([])
+  const [selectedTags, setSelectedTags] = useState<number[]>([])
 
   const {
     register,
@@ -51,6 +55,7 @@ const AudioCreate: React.FC = () => {
       deletePassword: '',
       allowPromotion: false,
       gender: '',
+      selectedTags: [],
     },
   })
 
@@ -65,6 +70,30 @@ const AudioCreate: React.FC = () => {
   const postTitleValue = watch('postTitle')
   const xIdValue = watch('xId')
   const deletePasswordValue = watch('deletePassword')
+
+  // タグデータを取得
+  useEffect(() => {
+    const fetchTags = async () => {
+      const result = await getTags()
+      if (result.success) {
+        setTags(result.tags)
+      }
+    }
+    fetchTags()
+  }, [])
+
+  // タグ選択の処理
+  const handleTagSelect = (tagId: number) => {
+    if (selectedTags.includes(tagId)) {
+      // 選択解除
+      setSelectedTags((prev) => prev.filter((id) => id !== tagId))
+    } else {
+      // 選択（最大10個まで）
+      if (selectedTags.length < 10) {
+        setSelectedTags((prev) => [...prev, tagId])
+      }
+    }
+  }
 
   // バリデーションルール
   const validationRules = {
@@ -162,19 +191,10 @@ const AudioCreate: React.FC = () => {
       formData.append('audioFile', selectedFile)
       formData.append('postTitle', data.postTitle)
       formData.append('xId', data.xId || '')
-      formData.append('passwordHash', encryptedPassword) // 1つのフィールドに統合
+      formData.append('passwordHash', encryptedPassword)
       formData.append('allowPromotion', data.allowPromotion.toString())
       formData.append('gender', data.gender)
-
-      // TODO: Cloudflare Workersに送信
-      console.log('Form Data:', {
-        audioFile: selectedFile,
-        postTitle: data.postTitle,
-        xId: data.xId,
-        passwordHash: encryptedPassword, // "salt:hash" 形式
-        allowPromotion: data.allowPromotion,
-        gender: data.gender,
-      })
+      formData.append('tags', JSON.stringify(selectedTags))
 
       const result = await uploadAudio(formData)
       console.log(result)
@@ -526,6 +546,68 @@ const AudioCreate: React.FC = () => {
               <p className="text-muted-foreground text-sm">
                 投稿を削除する際に必要となります。忘れないようにしてください
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <TagIcon className="h-5 w-5" />
+              タグ選択
+            </CardTitle>
+            <CardDescription>
+              投稿内容に関連するタグを選択してください（最大10個）
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {selectedTags.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-md font-medium">
+                    選択中のタグ ({selectedTags.length}/10)
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.map((tagId) => {
+                      const tag = tags.find((t) => t.id === tagId)
+                      return tag ? (
+                        <Badge
+                          key={tagId}
+                          variant="default"
+                          className="cursor-pointer text-sm"
+                          onClick={() => handleTagSelect(tagId)}
+                        >
+                          {tag.name} ×
+                        </Badge>
+                      ) : null
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-md font-medium">利用可能なタグ</Label>
+                <div className="flex max-h-60 flex-wrap gap-2 overflow-y-auto">
+                  {tags
+                    .filter((tag) => !selectedTags.includes(tag.id))
+                    .map((tag) => (
+                      <Badge
+                        key={tag.id}
+                        variant="outline"
+                        className={`cursor-pointer text-sm hover:bg-gray-100 ${
+                          selectedTags.length >= 10
+                            ? 'cursor-not-allowed opacity-50'
+                            : ''
+                        }`}
+                        onClick={() =>
+                          selectedTags.length < 10 && handleTagSelect(tag.id)
+                        }
+                      >
+                        {tag.name}
+                      </Badge>
+                    ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

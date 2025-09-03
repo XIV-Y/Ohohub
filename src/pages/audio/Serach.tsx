@@ -1,3 +1,4 @@
+// src/pages/audio/Search.tsx
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,12 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
-import { getPosts, type Post } from '../../lib/api'
-import { Link } from 'react-router-dom'
+import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { getPosts, getTags, type Post, type Tag } from '../../lib/api'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Badge } from '@/components/ui/badge'
 
 const AudioSearch: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -24,17 +28,38 @@ const AudioSearch: React.FC = () => {
   const [searchTitle, setSearchTitle] = useState('')
   const [searchXId, setSearchXId] = useState('')
   const [searchGender, setSearchGender] = useState('')
+  const [selectedTagId, setSelectedTagId] = useState<number | null>(null)
 
   // 実際に送信される検索条件
   const [appliedFilters, setAppliedFilters] = useState({
     postTitle: '',
     xId: '',
     gender: '',
+    tagId: null as number | null,
   })
+
+  useEffect(() => {
+    // URLパラメータから初期値を設定
+    const tagId = searchParams.get('tagId')
+    if (tagId) {
+      const tagIdNum = parseInt(tagId)
+      setSelectedTagId(tagIdNum)
+      setAppliedFilters((prev) => ({ ...prev, tagId: tagIdNum }))
+    }
+
+    fetchTags()
+  }, [])
 
   useEffect(() => {
     fetchPosts(currentPage)
   }, [currentPage, appliedFilters])
+
+  const fetchTags = async () => {
+    const result = await getTags()
+    if (result.success) {
+      setTags(result.tags)
+    }
+  }
 
   const fetchPosts = async (page: number) => {
     setLoading(true)
@@ -57,20 +82,37 @@ const AudioSearch: React.FC = () => {
       postTitle: searchTitle,
       xId: searchXId,
       gender: searchGender,
+      tagId: selectedTagId,
     })
     setCurrentPage(1)
+
+    // URLパラメータを更新
+    const newSearchParams = new URLSearchParams()
+    if (selectedTagId) newSearchParams.set('tagId', selectedTagId.toString())
+    setSearchParams(newSearchParams)
   }
 
   const handleClearSearch = () => {
     setSearchTitle('')
     setSearchXId('')
     setSearchGender('')
+    setSelectedTagId(null)
     setAppliedFilters({
       postTitle: '',
       xId: '',
       gender: '',
+      tagId: null,
     })
     setCurrentPage(1)
+    setSearchParams(new URLSearchParams())
+  }
+
+  const handleTagSelect = (tagId: number) => {
+    setSelectedTagId(tagId)
+  }
+
+  const handleTagRemove = () => {
+    setSelectedTagId(null)
   }
 
   const formatRelativeTime = (dateString: string): string => {
@@ -137,8 +179,12 @@ const AudioSearch: React.FC = () => {
     )
   }
 
+  const selectedTag = selectedTagId
+    ? tags.find((tag) => tag.id === selectedTagId)
+    : null
+
   return (
-    <div className="max-w-4xls mx-auto space-y-6 px-6 pb-10">
+    <div className="mx-auto max-w-4xl space-y-6 px-6 pb-10">
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold">音声投稿一覧</h1>
       </div>
@@ -147,6 +193,15 @@ const AudioSearch: React.FC = () => {
       <Card>
         <CardContent className="px-6 py-1">
           <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium">タイトル</label>
+              <Input
+                placeholder="タイトルで検索"
+                value={searchTitle}
+                onChange={(e) => setSearchTitle(e.target.value)}
+              />
+            </div>
+
             <div>
               <label className="mb-2 block text-sm font-medium">
                 Xアカウント
@@ -170,6 +225,31 @@ const AudioSearch: React.FC = () => {
                   <SelectItem value="female">女性</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="mb-2 block text-sm font-medium">タグ</label>
+
+              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border p-3">
+                {tags.map((tag) => (
+                  <Badge
+                    key={tag.id}
+                    variant={selectedTagId === tag.id ? 'default' : 'outline'}
+                    className={`cursor-pointer transition-all ${
+                      selectedTagId === tag.id
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'hover:bg-gray-100'
+                    }`}
+                    onClick={() =>
+                      selectedTagId === tag.id
+                        ? handleTagRemove()
+                        : handleTagSelect(tag.id)
+                    }
+                  >
+                    {tag.name}
+                  </Badge>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-end space-x-2">
@@ -209,13 +289,31 @@ const AudioSearch: React.FC = () => {
                         <h3 className="mb-1 truncate text-lg font-semibold">
                           {post.title}
                         </h3>
-                        <div className="text-muted-foreground flex items-center space-x-4 text-sm">
+                        <div className="text-muted-foreground mb-2 flex items-center space-x-4 text-sm">
                           <span>
                             {post.xId
                               ? `@${post.xId}`
                               : '名無しのオホゴエニスト'}
                           </span>
                         </div>
+                        {post.tags && post.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {post.tags.slice(0, 3).map((tag: any) => (
+                              <Badge
+                                key={tag.id}
+                                variant="secondary"
+                                className="text-xs"
+                              >
+                                {tag.name}
+                              </Badge>
+                            ))}
+                            {post.tags.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{post.tags.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-muted-foreground text-sm">
