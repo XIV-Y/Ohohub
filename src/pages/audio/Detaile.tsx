@@ -4,7 +4,7 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { getPost } from '../../lib/api'
 import useAudioPlayer from '../../hooks/useAudioPlayer'
 import NotFound from '../errors/NotFound'
@@ -18,14 +18,12 @@ import {
 
 const AudioDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [post, setPost] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(12) // ダミーデータ
   const [isBookmarkedState, setIsBookmarkedState] = useState(false)
-
-  // ダミータグデータ
-  const dummyTags = ['音楽', 'ASMR', '癒し', 'オリジナル']
 
   useEffect(() => {
     if (id && !post) {
@@ -43,7 +41,8 @@ const AudioDetail: React.FC = () => {
   const fetchPost = async (postId: string) => {
     const result = await getPost(postId)
     if (result.success) {
-      console.log('OK3')
+      console.log('投稿データ:', result.post)
+      console.log('タグデータ:', result.post.tags)
       setPost(result.post)
     }
     setLoading(false)
@@ -85,7 +84,7 @@ const AudioDetail: React.FC = () => {
           text: `${post.title} - 音声投稿をシェア`,
           url: window.location.href,
         })
-      } catch {
+      } catch (error) {
         navigator.clipboard.writeText(window.location.href)
         alert('URLをクリップボードにコピーしました')
       }
@@ -93,6 +92,10 @@ const AudioDetail: React.FC = () => {
       navigator.clipboard.writeText(window.location.href)
       alert('URLをクリップボードにコピーしました')
     }
+  }
+
+  const handleTagClick = (tagId: number) => {
+    navigate(`/audio?tagId=${tagId}`)
   }
 
   const formatPostDate = (dateString: string): string => {
@@ -246,18 +249,25 @@ const AudioDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-4 text-center">
-              <h4 className="text-muted-foreground text-sm font-medium">
-                タグ
-              </h4>
-              <div className="flex flex-wrap justify-center gap-2">
-                {dummyTags.map((tag, index) => (
-                  <Badge key={index} variant="secondary" className="text-sm">
-                    # {tag}
-                  </Badge>
-                ))}
+            {post.tags && Array.isArray(post.tags) && post.tags.length > 0 && (
+              <div className="space-y-4 text-center">
+                <h4 className="text-muted-foreground text-sm font-medium">
+                  タグ
+                </h4>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {post.tags.map((tag: any) => (
+                    <Badge
+                      key={tag.id}
+                      variant="secondary"
+                      className="cursor-pointer text-sm transition-colors hover:bg-gray-200"
+                      onClick={() => handleTagClick(tag.id)}
+                    >
+                      # {tag.name}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-end">
               <p className="text-muted-foreground text-sm">
