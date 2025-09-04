@@ -1,4 +1,3 @@
-// src/pages/audio/Search.tsx
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -10,62 +9,88 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { getPosts, getTags, type Post, type Tag } from '../../lib/api'
-import { Link, useSearchParams } from 'react-router-dom'
-import { Badge } from '@/components/ui/badge'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getPosts, type Post } from '../../lib/api'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 
 const AudioSearch: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
-  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
 
-  // 検索フィルター
+  // 検索フィルター（フォーム入力値）
   const [searchTitle, setSearchTitle] = useState('')
   const [searchXId, setSearchXId] = useState('')
   const [searchGender, setSearchGender] = useState('')
-  const [selectedTagId, setSelectedTagId] = useState<number | null>(null)
+
+  // URLのクエリパラメータを管理
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   // 実際に送信される検索条件
   const [appliedFilters, setAppliedFilters] = useState({
     postTitle: '',
     xId: '',
     gender: '',
-    tagId: null as number | null,
   })
 
+  // 初回読み込み時にURLパラメータから状態を復元
   useEffect(() => {
-    // URLパラメータから初期値を設定
-    const tagId = searchParams.get('tagId')
-    if (tagId) {
-      const tagIdNum = parseInt(tagId)
-      setSelectedTagId(tagIdNum)
-      setAppliedFilters((prev) => ({ ...prev, tagId: tagIdNum }))
-    }
+    const pageParam = searchParams.get('page')
+    const titleParam = searchParams.get('title') || ''
+    const xIdParam = searchParams.get('xId') || ''
+    const genderParam = searchParams.get('gender') || ''
 
-    fetchTags()
+    // フォーム入力値を設定
+    setSearchTitle(titleParam)
+    setSearchXId(xIdParam)
+    setSearchGender(genderParam)
+
+    // 適用された検索条件を設定
+    setAppliedFilters({
+      postTitle: titleParam,
+      xId: xIdParam,
+      gender: genderParam,
+    })
+
+    // ページを設定
+    const page = pageParam ? parseInt(pageParam, 10) : 1
+    setCurrentPage(page)
+
+    // 初期データを取得
+    fetchPosts(page, {
+      postTitle: titleParam,
+      xId: xIdParam,
+      gender: genderParam,
+    })
   }, [])
 
+  // appliedFiltersまたはcurrentPageが変更されたときにデータを取得
   useEffect(() => {
-    fetchPosts(currentPage)
+    // 初回読み込み判定のためのフラグを追加
+    const isInitialLoad =
+      currentPage === 1 &&
+      !appliedFilters.postTitle &&
+      !appliedFilters.xId &&
+      !appliedFilters.gender &&
+      !searchParams.get('page') &&
+      !searchParams.get('title') &&
+      !searchParams.get('xId') &&
+      !searchParams.get('gender')
+
+    if (isInitialLoad) {
+      return
+    }
+    fetchPosts(currentPage, appliedFilters)
   }, [currentPage, appliedFilters])
 
-  const fetchTags = async () => {
-    const result = await getTags()
-    if (result.success) {
-      setTags(result.tags)
-    }
-  }
-
-  const fetchPosts = async (page: number) => {
+  const fetchPosts = async (page: number, filters = appliedFilters) => {
     setLoading(true)
     const result = await getPosts({
       page,
-      ...appliedFilters,
+      ...filters,
     })
 
     if (result.success) {
@@ -77,42 +102,59 @@ const AudioSearch: React.FC = () => {
     setLoading(false)
   }
 
+  // URLパラメータを更新する関数
+  const updateUrlParams = (page: number, filters: typeof appliedFilters) => {
+    const params = new URLSearchParams()
+
+    if (page > 1) {
+      params.set('page', page.toString())
+    }
+    if (filters.postTitle) {
+      params.set('title', filters.postTitle)
+    }
+    if (filters.xId) {
+      params.set('xId', filters.xId)
+    }
+    if (filters.gender) {
+      params.set('gender', filters.gender)
+    }
+
+    // URLを更新
+    const newUrl = params.toString() ? `?${params.toString()}` : ''
+    navigate(`/audio${newUrl}`, { replace: false })
+  }
+
   const handleSearch = () => {
-    setAppliedFilters({
+    const newFilters = {
       postTitle: searchTitle,
       xId: searchXId,
       gender: searchGender,
-      tagId: selectedTagId,
-    })
-    setCurrentPage(1)
+    }
 
-    // URLパラメータを更新
-    const newSearchParams = new URLSearchParams()
-    if (selectedTagId) newSearchParams.set('tagId', selectedTagId.toString())
-    setSearchParams(newSearchParams)
+    setAppliedFilters(newFilters)
+    setCurrentPage(1)
+    updateUrlParams(1, newFilters)
   }
 
   const handleClearSearch = () => {
     setSearchTitle('')
     setSearchXId('')
     setSearchGender('')
-    setSelectedTagId(null)
-    setAppliedFilters({
+
+    const clearedFilters = {
       postTitle: '',
       xId: '',
       gender: '',
-      tagId: null,
-    })
+    }
+
+    setAppliedFilters(clearedFilters)
     setCurrentPage(1)
-    setSearchParams(new URLSearchParams())
+    navigate('/audio', { replace: false })
   }
 
-  const handleTagSelect = (tagId: number) => {
-    setSelectedTagId(tagId)
-  }
-
-  const handleTagRemove = () => {
-    setSelectedTagId(null)
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage)
+    updateUrlParams(newPage, appliedFilters)
   }
 
   const formatRelativeTime = (dateString: string): string => {
@@ -147,7 +189,7 @@ const AudioSearch: React.FC = () => {
           key={i}
           variant={i === currentPage ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setCurrentPage(i)}
+          onClick={() => handlePageChange(i)}
         >
           {i}
         </Button>
@@ -159,7 +201,7 @@ const AudioSearch: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage(currentPage - 1)}
+          onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage <= 1}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -170,7 +212,7 @@ const AudioSearch: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage(currentPage + 1)}
+          onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
         >
           <ChevronRight className="h-4 w-4" />
@@ -179,12 +221,8 @@ const AudioSearch: React.FC = () => {
     )
   }
 
-  const selectedTag = selectedTagId
-    ? tags.find((tag) => tag.id === selectedTagId)
-    : null
-
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-6 pb-10">
+    <div className="max-w-4xls mx-auto space-y-6 px-6 pb-10">
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold">音声投稿一覧</h1>
       </div>
@@ -194,9 +232,11 @@ const AudioSearch: React.FC = () => {
         <CardContent className="px-6 py-1">
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium">タイトル</label>
+              <label className="mb-2 block text-sm font-medium">
+                タイトル検索
+              </label>
               <Input
-                placeholder="タイトルで検索"
+                placeholder="タイトルを入力"
                 value={searchTitle}
                 onChange={(e) => setSearchTitle(e.target.value)}
               />
@@ -225,31 +265,6 @@ const AudioSearch: React.FC = () => {
                   <SelectItem value="female">女性</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="mb-2 block text-sm font-medium">タグ</label>
-
-              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border p-3">
-                {tags.map((tag) => (
-                  <Badge
-                    key={tag.id}
-                    variant={selectedTagId === tag.id ? 'default' : 'outline'}
-                    className={`cursor-pointer transition-all ${
-                      selectedTagId === tag.id
-                        ? 'bg-primary text-primary-foreground shadow-md'
-                        : 'hover:bg-gray-100'
-                    }`}
-                    onClick={() =>
-                      selectedTagId === tag.id
-                        ? handleTagRemove()
-                        : handleTagSelect(tag.id)
-                    }
-                  >
-                    {tag.name}
-                  </Badge>
-                ))}
-              </div>
             </div>
 
             <div className="flex items-end space-x-2">
@@ -289,31 +304,13 @@ const AudioSearch: React.FC = () => {
                         <h3 className="mb-1 truncate text-lg font-semibold">
                           {post.title}
                         </h3>
-                        <div className="text-muted-foreground mb-2 flex items-center space-x-4 text-sm">
+                        <div className="text-muted-foreground flex items-center space-x-4 text-sm">
                           <span>
                             {post.xId
                               ? `@${post.xId}`
                               : '名無しのオホゴエニスト'}
                           </span>
                         </div>
-                        {post.tags && post.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {post.tags.slice(0, 3).map((tag: any) => (
-                              <Badge
-                                key={tag.id}
-                                variant="secondary"
-                                className="text-xs"
-                              >
-                                {tag.name}
-                              </Badge>
-                            ))}
-                            {post.tags.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{post.tags.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-muted-foreground text-sm">
