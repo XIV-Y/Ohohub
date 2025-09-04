@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Bookmark } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { getBookmarksPaginated, type BookmarkItem } from '@/utils/bookmarkUtils'
 
 const BookmarksPage: React.FC = () => {
@@ -13,7 +13,20 @@ const BookmarksPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
 
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
   useEffect(() => {
+    const pageParam = searchParams.get('page')
+    const page = pageParam ? parseInt(pageParam, 10) : 1
+    setCurrentPage(page)
+    fetchBookmarksData(page)
+  }, [])
+
+  useEffect(() => {
+    if (currentPage === 1 && searchParams.get('page') === null) {
+      return
+    }
     fetchBookmarksData(currentPage)
   }, [currentPage])
 
@@ -31,6 +44,15 @@ const BookmarksPage: React.FC = () => {
       console.error('ブックマーク取得エラー:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage)
+    if (newPage > 1) {
+      navigate(`/bookmarks?page=${newPage}`, { replace: false })
+    } else {
+      navigate('/bookmarks', { replace: false })
     }
   }
 
@@ -66,7 +88,7 @@ const BookmarksPage: React.FC = () => {
           key={i}
           variant={i === currentPage ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setCurrentPage(i)}
+          onClick={() => handlePageChange(i)}
         >
           {i}
         </Button>
@@ -78,7 +100,7 @@ const BookmarksPage: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage(currentPage - 1)}
+          onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage <= 1}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -89,7 +111,7 @@ const BookmarksPage: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCurrentPage(currentPage + 1)}
+          onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
         >
           <ChevronRight className="h-4 w-4" />
